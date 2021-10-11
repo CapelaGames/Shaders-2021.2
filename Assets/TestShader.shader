@@ -4,19 +4,21 @@ Shader "Unlit/TestShader"{
         _ColorA("Color A", Color) = (1,1,1,1)
         _ColorB("Color B", Color) = (0,0,0,0)
         _ColorStart("Color Start", Range(0,1)) = 0
-        _ColorEnd  ("Color End",  Range(0,1)) = 1
-        
-//        _Scale("UV Scale", Float) = 1
-//        _Offset("UV Offset", Float) = 0
+        _ColorEnd("Color End",  Range(0,1)) = 1
+
+        //        _Scale("UV Scale", Float) = 1
+        //        _Offset("UV Offset", Float) = 0
     }
-    SubShader{
-        Tags { "RenderType"="Transparent"
-              "Queue"="Transparent"}
-        Pass{
-            
-            Cull Off
+        SubShader{
+            Tags { "RenderType" = "Transparent"
+                  "Queue" = "Transparent"}
+            Pass{
+
+            Cull Back
             Zwrite Off //dont write to the depth buffer / z-buffer
+            ZTest NotEqual
             Blend One One //Additive
+
             //Blend DstColor Zero //Multiply
             
             CGPROGRAM
@@ -46,16 +48,18 @@ Shader "Unlit/TestShader"{
                 o.uv = v.uv;//(v.uv + _Offset) * _Scale; //
 
                 
-                o.normal = mul((float3x3) unity_ObjectToWorld, v.normal);
+                o.normal = v.normal; //mul((float3x3) unity_ObjectToWorld, v.normal);
                 //o.normal = UnityObjectToWorldNormal(v.normal);
                 return o;
             }
 
             //lerp        (10,20,0.5)= 15
             //InverseLerp (10,20,15) = 0.5
-            float InverseLerp(float a, float b, float v){
+            float InverseLerp(float a, float b, float v)
+            {
                 return (v-a)/(b-a);
             }
+            
             // float Lerp(float a, float b, float t){
             //     return(1.0 - t) * a+b * t;
             // }
@@ -66,15 +70,23 @@ Shader "Unlit/TestShader"{
                // float t =  saturate( InverseLerp(_ColorStart, _ColorEnd, i.uv.x));
                 //float t = abs( frac(i.uv.x * 5) * 2 -1);
 
+
+                //wave pattern
                 float xOffset = cos( i.uv.x * TAU * 8) * 0.01;
-                
                 float t = cos((i.uv.y + xOffset - _Time.y *  0.1)  * TAU * 5) * 0.5 + 0.5;
-
                 t *= 1- i.uv.y;
-                //return t;
 
-                float4 outColor = lerp(_ColorA, _ColorB, t);
-                return float4(outColor.xyz,1);
+                
+                //return t;
+                
+                bool topBottomRemover = ( abs(i.normal.y ) < 0.8);
+
+                //removed the top + bottom 80%
+                float waves = t * topBottomRemover;
+
+
+                float4 outColor = lerp(_ColorA, _ColorB, i.uv.y);
+                return float4( outColor.xyz * waves,1);
                 
 
                 
